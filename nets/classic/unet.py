@@ -28,7 +28,8 @@ class ClassicUnet(Net):
       dropout_rate=0.5,
       name='unet',
       level=1,
-      **kwargs):
+      **kwargs
+  ):
 
     # Sanity  check
     assert isinstance(num_filter_list, (tuple, list)) and num_filter_list
@@ -47,10 +48,8 @@ class ClassicUnet(Net):
     # Add layers
     self._add_layers()
 
-
   @property
   def net_height(self): return len(self.num_filter_list)
-
 
   def _add_layers(self):
 
@@ -70,8 +69,8 @@ class ClassicUnet(Net):
         self.add(MaxPool2D(pool_size=(2, 2), strides=(2, 2)))
 
     # Construct right half
-    for filters, pre_layer in zip(
-        reversed(self.num_filter_list[:-1]), reversed(layers_to_link)):
+    for filters, pre_layer in zip(reversed(self.num_filter_list[:-1]), 
+                                  reversed(layers_to_link)):
       # Up-sampling
       self.add(Deconv2D(
         filters, kernel_size=2, strides=2, activation=self.activation,
@@ -81,7 +80,8 @@ class ClassicUnet(Net):
       # Merge
       self.add(Concatenate(pre_layer))
       # Add Conv layers
-      for _ in range(self.right_repeats): self._add_conv(filters, kernel_size=3)
+      for _ in range(self.right_repeats): 
+        self._add_conv(filters, kernel_size=3)
 
     # Add output layer
     if self.num_classes == 2:
@@ -92,7 +92,6 @@ class ClassicUnet(Net):
       self._add_conv(self.num_classes, kernel_size=3)
       self._add_conv(self.num_classes, kernel_size=1, use_activation=False)
       self.add(Activation('softmax'))
-
 
   def _add_conv(self, filters, kernel_size, use_activation=True):
     activation = self.activation if use_activation else None

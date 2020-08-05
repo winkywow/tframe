@@ -14,6 +14,7 @@ from tframe.data.dataset import DataSet
 
 
 class CIFAR10(ImageDataAgent):
+  # TODO: tfd
   """The CIFAR-10 data set (Canadian Institute For Advanced Research) is a
      collection of images that are commonly used to train machine learning
      and computer vision algorithms. """
@@ -69,11 +70,13 @@ class CIFAR10(ImageDataAgent):
   @staticmethod
   def _load_batch(file_name):
     """Load 10000 samples of shape [32. 32, 3] with dense labels"""
+    
     def pickle_load(f):
       version = platform.python_version_tuple()
       if version[0] == '2': return pickle.load(f)
       elif version[0] == '3': return pickle.load(f, encoding='latin1')
       raise ValueError('!! Invalid python version: {}'.format(version))
+    
     with open(file_name, 'rb') as f:
       data_dict = pickle_load(f)
       X = data_dict['data']

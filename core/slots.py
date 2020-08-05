@@ -89,6 +89,7 @@ class Slot(object):
 
 class TensorSlot(Slot):
   op_classes = [tf.Tensor]
+
   def __init__(self, model, name='tensor'):
     super().__init__(model, name)
     self._quantity_definition = None

@@ -22,7 +22,6 @@ class Normalize(Layer):
     self._mu = mu
     self._sigma = sigma
 
-
   @single_input
   def _link(self, x, **kwargs):
     y = x

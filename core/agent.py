@@ -23,6 +23,7 @@ from tframe.core.decorators import with_graph
 
 
 class Agent(object):
+  # TODO: Agent ???
   """An Agent works for TFrame Model, handling tensorflow stuffs"""
   def __init__(self, model, graph=None):
     # Each agent works on one tensorflow graph with a tensorflow session

@@ -32,7 +32,7 @@ class Predictor(Feedforward, Recurrent):
     :param mark: model mark
     :param net_type: \in {Feedforward, Recurrent}
     """
-    if not net_type in (Feedforward, Recurrent):
+    if net_type not in (Feedforward, Recurrent):
       raise TypeError('!! Unknown net type')
     self.master = net_type
     # Attributes
@@ -72,7 +72,7 @@ class Predictor(Feedforward, Recurrent):
   @with_graph
   def build(self, optimizer=None, loss='euclid', metric=None,
             batch_metric=None, eval_metric=None, **kwargs):
-    context.metric_name = 'unknown' # TODO: to be deprecated
+    context.metric_name = 'unknown'  # TODO: to be deprecated
     Model.build(self, optimizer=optimizer, loss=loss, metric=metric,
                 batch_metric=batch_metric, eval_metric=eval_metric, **kwargs)
 

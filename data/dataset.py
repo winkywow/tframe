@@ -431,7 +431,6 @@ class DataSet(TFRData):
     if training: return self.indices[indices]
     else: return self._ordered_indices[indices]
 
-
   def _check_data(self):
     """data_dict should be a non-empty dictionary containing regular numpy
        arrays with the same length"""

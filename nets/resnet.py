@@ -12,6 +12,7 @@ from tframe.core import single_input
 from tframe.layers import Activation
 from tframe.layers import Linear
 from tframe.layers.layer import Layer
+from tframe.layers.convolutional import Conv2D
 
 
 class ResidualNet(tfr_net.Net):
@@ -29,7 +30,6 @@ class ResidualNet(tfr_net.Net):
     self._current_collection = self.children
     self._transform_layer = None
 
-
   # region : Properties
 
   def structure_string(self, detail=True, scale=True):
@@ -45,8 +45,49 @@ class ResidualNet(tfr_net.Net):
     # Return
     return result
 
-  # endregion : Properties
+  @property
+  def structure_detail(self):
+    # TODO: res_block structure_detail
+    from tframe import hub
+    from tframe.utils import stark
+    import tframe.utils.format_string as fs
 
+    widths = [33, 24, 20]
+    rows = []
+    add_to_rows = lambda cols: rows.append(fs.table_row(cols, widths))
+    total_params, dense_total = 0, 0
+
+    def get_num_string(num, dense_num):
+      if num == 0: num_str = ''
+      elif hub.prune_on or hub.etch_on:
+        num_str = '{} ({:.1f}%)'.format(num, 100.0 * num / dense_num)
+      else: num_str = str(num)
+      return num_str
+
+    for child in self.children + [self._transform_layer] + self._post_processes:
+      if child is None:
+        continue
+      if isinstance(child, Layer):
+        # Try to find variable in child
+        # TODO: to be fixed
+        # variables = [v for v in self.var_list if child.group_name in v.name]
+        variables = [
+          v for v in self.var_list
+          if child.group_name == v.name.split('/')[self._level + 1]]
+        num, dense_num = stark.get_params_num(variables, consider_prune=True)
+        # Generate a row
+        cols = [self._get_layer_string(child, True, True),
+                child.output_shape_str, get_num_string(num, dense_num)]
+        add_to_rows(cols)
+      else:
+        raise TypeError('!! unknown child type {}'.format(type(child)))
+
+      # Accumulate total_params and dense_total_params
+      total_params += num
+      dense_total += dense_num
+    return rows, total_params, dense_total
+
+  # endregion : Properties
 
   # region : Abstract Implementation
 
@@ -73,8 +114,13 @@ class ResidualNet(tfr_net.Net):
         use_bias = self.kwargs.get('use_bias', False)
         self._transform_layer = Linear(
           output_dim=output_shape[1], use_bias=use_bias)
+      elif len(input_shape) == 4:
+        strides = 2 if input_shape[1] != output_shape[1] else 1
+        self._transform_layer = Conv2D(filters=output_shape[-1], kernel_size=1,
+                                       strides=strides)
       else: raise TypeError(
-        '!! ResNet in tframe currently only support linear transformation')
+        '!! ResNet in tframe currently only support linear and Conv2D '
+        'transformation.')
       # Save add
       self._transform_layer.full_name = self._get_new_name(
         self._transform_layer)
@@ -92,7 +138,6 @@ class ResidualNet(tfr_net.Net):
     return output
 
   # endregion : Abstract Implementation
-
 
   # region : Public Methods
 

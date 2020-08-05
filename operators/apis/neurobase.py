@@ -21,7 +21,8 @@ class NeuroBase(object):
       bias_initializer='zeros',
       layer_normalization=False,
       weight_dropout=0.0,
-      **kwargs):
+      **kwargs
+  ):
 
     if activation: activation = activations.get(activation)
     self._activation = activation

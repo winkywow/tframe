@@ -17,7 +17,8 @@ class HyperBase(Layer, NeuroBase):
       use_bias=True,
       bias_initializer='zeros',
       layer_normalization=False,
-      **kwargs):
+      **kwargs
+  ):
 
     # Call parent's constructor
     NeuroBase.__init__(self, activation, weight_initializer, use_bias,

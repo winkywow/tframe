@@ -177,6 +177,7 @@ class Net(Function):
       dense_total += dense_num
 
     # Check total params
+    # TODO: check total param
     assert total_params == sum([np.prod(v.shape) for v in self.var_list])
 
     if self.is_root:
@@ -279,7 +280,6 @@ class Net(Function):
 
   # endregion : Properties
 
-
   # region : Overrode Method
 
   # TODO: modify with_logits mechanism
@@ -350,7 +350,6 @@ class Net(Function):
 
   # endregion : Overrode Methods
 
-
   # region : Public Methods
 
   def register_extractor(self, extractor):
@@ -388,9 +387,16 @@ class Net(Function):
           loss_identifier=None,
           target_key=None,
           loss_coef=1.0):
-    """Add a net or a layer in to this model
+    """
+    Add a net or a layer in to this model
     :param f: \in (Net, Layer)
     :param inter_type: inter-connection type
+    :param return_net:
+    :param as_output:
+    :param output_name:
+    :param loss_identifier:
+    :param target_key:
+    :param loss_coef:
     :return: f or f's container
     """
     # If add an empty net
@@ -423,16 +429,18 @@ class Net(Function):
       """This is a compromise"""
       if not as_output: return
       assert self.is_root
-      self._output_slots.append(OutputSlot(
-        self, f, loss=loss_identifier, loss_coef=loss_coef, name=output_name,
-        target_key=target_key, last_only=False))
+      self._output_slots.append(OutputSlot(self, f, loss=loss_identifier, 
+                                           loss_coef=loss_coef, 
+                                           name=output_name, 
+                                           target_key=target_key, 
+                                           last_only=False))
+      
     _handle_error_injection()
 
     if return_net: return container
     else: return f
 
   # endregion : Public Methods
-
 
   # region : Private Methods
 

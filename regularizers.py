@@ -12,6 +12,7 @@ from tframe.utils.arg_parser import Parser
 def L1(penalty):
   return lambda x: penalty * tf.norm(x, ord=1)
 
+
 def L2(penalty):
   return lambda x: penalty * tf.norm(x, ord=2)
 

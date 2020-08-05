@@ -231,9 +231,11 @@ class DataAgent(object):
     console.show_status('Downloading {} to {} ...'.format(
       file_name, data_dir))
     start_time = time.time()
+
     def _progress(count, block_size, total_size):
       console.clear_line()
       console.print_progress(count * block_size, total_size, start_time)
+
     url = cls.DATA_URL if url is None else url
     file_path, _ = urllib.request.urlretrieve(url, file_path, _progress)
     stat_info = os.stat(file_path)
@@ -293,11 +295,11 @@ class ImageDataAgent(DataAgent):
       data_set.targets = misc.convert_to_one_hot(
         data_set.targets, data_set[data_set.NUM_CLASSES])
 
-    return cls._split_and_return(
-      data_set, train_size, validate_size, test_size, over_classes=over_classes)
+    return cls._split_and_return(data_set, train_size, validate_size,
+                                 test_size, over_classes=over_classes)
 
   @classmethod
-  def load_as_tframe_data(cls, data_dir):
+  def load_as_tframe_data(cls, data_dir, *args, **kwargs):
     from .dataset import DataSet
     file_path = os.path.join(data_dir, cls.TFD_FILE_NAME)
     if os.path.exists(file_path): return DataSet.load(file_path)
@@ -326,4 +328,7 @@ class ImageDataAgent(DataAgent):
     console.show_status('Data set saved to {}'.format(file_path))
     return data_set
 
+  @classmethod
+  def load_as_numpy_arrays(cls, data_dir):
+    raise NotImplementedError
 

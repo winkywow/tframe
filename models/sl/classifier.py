@@ -26,6 +26,7 @@ class Classifier(Predictor):
   model_name = 'classifier'
 
   def __init__(self, mark=None, net_type=Feedforward):
+    # TODO: TensorSlot
     Predictor.__init__(self, mark, net_type)
     # Private attributes
     self._probabilities = TensorSlot(self, 'Probability')

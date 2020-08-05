@@ -261,7 +261,7 @@ class Model(object):
     """Abstract method, must be implemented in different models
        Usually touches tensorflow api directly and plug tf ops into tfr slots
     """
-    raise  NotImplementedError('!! build method not implemented')
+    raise NotImplementedError('!! build method not implemented')
 
   def _init_monitor(self):
     pass

@@ -24,7 +24,8 @@ class Dense(HyperBase):
       bias_initializer='zeros',
       layer_normalization=False,
       etch=None,
-      **kwargs):
+      **kwargs
+  ):
     """
     :param etch: if this argument is not None, it will be passed to the
                  neuron array and
@@ -42,7 +43,6 @@ class Dense(HyperBase):
     self.neuron_scale = [num_neurons]
     self.etch = etch
 
-
   @property
   def structure_tail(self):
     activation = ''
@@ -51,7 +51,6 @@ class Dense(HyperBase):
       if isinstance(self._activation_string, str):
         activation = '->' + self._activation_string
     return '({})'.format(self.num_neurons) + activation
-
 
   def forward(self, x, **kwargs):
     return self.dense(self.num_neurons, x, scope='neuron_array',
