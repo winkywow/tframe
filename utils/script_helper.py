@@ -119,7 +119,8 @@ class Helper(object):
   def set_python_cmd_suffix(self, suffix='3'):
     self._python_cmd = 'python{}'.format(suffix)
 
-  def run(self, times=1, save=False, mark=''):
+  def run(self, times=1, engine='grid', save=False, mark='',
+          bayes_kwargs=None):
     if self._sys_runs is not None:
       times = checker.check_positive_integer(self._sys_runs)
       console.show_status('Run # set to {}'.format(times))
@@ -128,6 +129,12 @@ class Helper(object):
       self.common_parameters['save_model'] = True
     # Show parameters
     self._show_parameters()
+
+    # XXX
+    if engine in ('bayes', 'bxxxxxx'):
+      self._run_bayes(save, mark, bayes_kwargs)
+      return
+    assert engine in ('grid', 'gridsearch')
     # Begin iteration
     counter = 0
     for run_id in range(times):
@@ -233,11 +240,13 @@ class Helper(object):
 
   def _show_parameters(self):
     console.section('Parameters')
+
     def _show_config(name, od):
       assert isinstance(od, OrderedDict)
       if len(od) == 0: return
       console.show_info(name)
       for k, v in od.items(): console.supplement('{}: {}'.format(k, v), level=2)
+
     _show_config('Common Settings', self.common_parameters)
     _show_config('Hyper Parameters', self.hyper_parameters)
     _show_config('Constraints', self.constraints)
@@ -253,6 +262,7 @@ class Helper(object):
       k, v = r.groups()
       assert isinstance(v, str)
       val_list = re.split(r'[,/]', v)
+      # TODO: bayes parameters
       if k in ('run', 'runs'):
         assert len(val_list) == 1
         self._sys_runs = checker.check_positive_integer(int(val_list[0]))
@@ -267,3 +277,74 @@ class Helper(object):
       self.sys_keys.append(k)
 
   # endregion : Private Methods
+
+  # region : BayesSearch
+
+  def _run_bayes(self, save=False, mark='', bayes_kwargs=None):
+    from tframe.utils.param_search.optimizer import get_random_seed
+    if bayes_kwargs is None:
+      bayes_kwargs = dict()
+    assert isinstance(bayes_kwargs, dict)
+    random_state = bayes_kwargs.get('random_state', 1234)
+    search_initial_points = bayes_kwargs.get('search_initial_points', 2)
+    search_iters = bayes_kwargs.get('search_iters', 10)
+
+    optimizer_kwargs = {}
+    history = []
+
+    param_space = self.hyper_parameters
+    random_state = get_random_seed(random_state)
+    optimizer_kwargs['random_state'] = random_state
+    optimizer_kwargs['n_initial_points'] = search_initial_points
+    optimizer = self._make_optimizer(param_space, optimizer_kwargs)
+
+    for param_id in range(search_iters):
+      history = self._step_bayes(optimizer, param_space, param_id,
+                                 search_iters, mark, save, history)
+
+  def _make_optimizer(self, param_space, optimizer_kwargs):
+    from tframe.utils.param_search.optimizer import Optimizer
+    from tframe.utils.param_search.param_space import param_space_2list
+    kwargs = optimizer_kwargs.copy()
+    kwargs['params_space'] = param_space_2list(param_space)
+    optimizer = Optimizer(**kwargs)
+    return optimizer
+
+  @check_flag_name
+  def register_bayes(self, flag_name, candi):
+    # TODO: parser parameters
+    from tframe.utils.param_search.param_space import BaseParamSpace
+
+    if flag_name in self.sys_keys: return
+    assert isinstance(candi, BaseParamSpace)
+    self.hyper_parameters[flag_name] = candi
+
+  def _step_bayes(self, optimizer, param_space, counter, iters, mark, save,
+                  history):
+    from tframe.utils.param_search.param_space import point_2dict
+    params = optimizer.ask()
+    params_dict = point_2dict(param_space, params)
+
+    # Grand self._add_script_suffix the highest priority
+    if self._add_script_suffix is not None: save = self._add_script_suffix
+    if save: self.common_parameters['script_suffix'] = '_{}{}'.format(
+      mark, counter)
+
+    params_config = self._get_all_configs(params_dict)
+    self._apply_constraints(params_config)
+
+    params_list = self._get_config_strings(params_config)
+    params_string = ' '.join(params_list)
+    if params_string in history: return
+    history.append(params_string)
+    console.show_status(
+      'Loading task ...', '[Run {}/{}]'.format(counter, iters))
+    call([self._python_cmd, self.module_name] + params_list)
+    print()
+    # TODO: get results
+    # smaller is better
+    results = None
+    optimizer.tell(params, results)
+    return history
+
+  # endregion : BayesSearch

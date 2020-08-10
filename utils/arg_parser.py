@@ -105,6 +105,8 @@ class Parser(object):
 
 
 if __name__ == '__main__':
-  p = Parser.parse('raw:save=True', ignore_in_suffix='save')
-  print(p.filename_suffix)
+  p = Parser.parse('bayes:save=True;low=1', ignore_in_suffix='save')
+  print(p.name)
   print(p.get_kwarg('save', bool))
+  print(p.get_kwarg('low', int))
+  print(p.get_kwarg('high', float, default=10))
