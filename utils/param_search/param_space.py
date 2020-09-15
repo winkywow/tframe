@@ -1,8 +1,23 @@
 import numpy as np
+from collections import OrderedDict
 from scipy.stats.distributions import uniform, randint, rv_discrete
 
-from acorn.utils.param_search.transformers import *
-from acorn.data.data_utils import get_random_seed
+from tframe.utils.param_search.transformers import *
+
+
+def get_random_seed(seed):
+    """
+    get a np.random.RandomState instance
+    :param seed: None or int or instance of RandomState
+    :return: a np.random.RandomState instance
+    """
+    if seed is None or seed is np.random:
+        return np.random
+    if isinstance(seed, int):
+        return np.random.RandomState(seed)
+    if isinstance(seed, np.random.RandomState):
+        return seed
+    raise ValueError('{} cannot be used as a random seed'.format(seed))
 
 
 def _uniform_inclusive(loc=0.0, scale=1.0):
@@ -111,7 +126,7 @@ def param_space_2list(param_space):
 
 
 def point_2dict(param_space, param_list):
-    params_dict = {}
+    params_dict = OrderedDict()
     for k, v in zip(sorted(param_space.keys()), param_list):
         params_dict[k] = v
     return params_dict

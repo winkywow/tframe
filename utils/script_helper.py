@@ -11,6 +11,7 @@ from tframe import checker
 from tframe import console
 from tframe.utils.local import re_find_single
 from tframe.utils.misc import date_string
+from tframe.utils import arg_parser
 from tframe.configs.flag import Flag
 from tframe.trainers import SmartTrainerHub
 
@@ -59,6 +60,9 @@ class Helper(object):
     self.common_parameters = OrderedDict()
     self.hyper_parameters = OrderedDict()
     self.constraints = OrderedDict()
+    self.bayes_optimizer_kwargs = OrderedDict()
+    self.engine = None
+    self.base_metric = None
 
     self._python_cmd = 'python' if os.name == 'nt' else 'python3'
 
@@ -107,14 +111,25 @@ class Helper(object):
     """Flag value can not be a tuple or a list"""
     if flag_name in self.sys_keys: return
     assert len(val) > 0
-    if len(val) == 1 and isinstance(val[0], (tuple, list)): val = val[0]
+    if len(val) == 1 and isinstance(val[0], (tuple, list, str)):
+      val = val[0]
 
-    if isinstance(val, (list, tuple)) and len(val) > 1:
-      self.hyper_parameters[flag_name] = val
-    else:
-      if isinstance(val, (list, tuple)): val = val[0]
-      self.common_parameters[flag_name] = val
-      self._show_flag_if_necessary(flag_name, val)
+    try:
+      if isinstance(val, str): val_tmp = val
+      else: val_tmp = val[0]
+      p = arg_parser.Parser.parse(val_tmp, splitter='>')
+      if p.name in ('bayes', 'bayers', 'Bayes'):
+        self._register_bayes(flag_name, p, val)
+        return
+      else:
+        raise Exception
+    except:
+      if isinstance(val, (list, tuple)) and len(val) > 1:
+        self.hyper_parameters[flag_name] = val
+      else:
+        if isinstance(val, (list, tuple)): val = val[0]
+        self.common_parameters[flag_name] = val
+        self._show_flag_if_necessary(flag_name, val)
 
   def set_python_cmd_suffix(self, suffix='3'):
     self._python_cmd = 'python{}'.format(suffix)
@@ -128,10 +143,13 @@ class Helper(object):
     if save:
       self.common_parameters['save_model'] = True
     # Show parameters
+    # TODO: show params_space
     self._show_parameters()
 
     # XXX
-    if engine in ('bayes', 'bxxxxxx'):
+    if self.engine is None:
+      self.engine = engine
+    if self.engine in ('bayes', 'bxxxxxx'):
       self._run_bayes(save, mark, bayes_kwargs)
       return
     assert engine in ('grid', 'gridsearch')
@@ -273,6 +291,28 @@ class Helper(object):
         assert option.lower() in ('true', 'false')
         self._add_script_suffix = option.lower() == 'true'
         continue
+      if k in ('random_state', 'random_seed'):
+        assert len(val_list) == 1
+        self.bayes_optimizer_kwargs['random_state'] = val_list[0]
+        continue
+      if k in ('engine', 'mode'):
+        assert len(val_list) == 1
+        self.engine = val_list[0]
+        continue
+      if k in ('search_iterations', 'search_iters', 'iters'):
+        assert len(val_list) == 1
+        self.bayes_optimizer_kwargs['search_iters'] = \
+          checker.check_positive_integer(int(val_list[0]))
+        continue
+      if k in ('search_initial_points', 'initial_points'):
+        assert len(val_list) == 1
+        self.bayes_optimizer_kwargs['n_initial_points'] = \
+          checker.check_positive_integer(int(val_list[0]))
+        continue
+      if k in ('metric', 'base_metric'):
+        assert len(val_list) == 1
+        self.base_metric = val_list[0]
+        continue
       self.register(k, *val_list)
       self.sys_keys.append(k)
 
@@ -281,21 +321,28 @@ class Helper(object):
   # region : BayesSearch
 
   def _run_bayes(self, save=False, mark='', bayes_kwargs=None):
-    from tframe.utils.param_search.optimizer import get_random_seed
+    from tframe.utils.param_search.param_space import get_random_seed
     if bayes_kwargs is None:
       bayes_kwargs = dict()
     assert isinstance(bayes_kwargs, dict)
     random_state = bayes_kwargs.get('random_state', 1234)
     search_initial_points = bayes_kwargs.get('search_initial_points', 2)
     search_iters = bayes_kwargs.get('search_iters', 10)
+    search_iters = self.bayes_optimizer_kwargs.get('search_iters',
+                                                   search_iters)
+    if self.base_metric is None:
+      self.base_metric = bayes_kwargs.get('metric', 'best_loss')
 
     optimizer_kwargs = {}
     history = []
 
     param_space = self.hyper_parameters
-    random_state = get_random_seed(random_state)
     optimizer_kwargs['random_state'] = random_state
     optimizer_kwargs['n_initial_points'] = search_initial_points
+
+    optimizer_kwargs.update(self.bayes_optimizer_kwargs)
+    optimizer_kwargs['random_state'] = get_random_seed(random_state)
+
     optimizer = self._make_optimizer(param_space, optimizer_kwargs)
 
     for param_id in range(search_iters):
@@ -310,41 +357,87 @@ class Helper(object):
     optimizer = Optimizer(**kwargs)
     return optimizer
 
-  @check_flag_name
-  def register_bayes(self, flag_name, candi):
-    # TODO: parser parameters
-    from tframe.utils.param_search.param_space import BaseParamSpace
+  def _register_bayes(self, flag_name, parse, *val):
+    from tframe.utils.param_search.param_space import (FloatParamSpace,
+                                                       IntParamSpace,
+                                                       CategoricalParamSpace)
 
-    if flag_name in self.sys_keys: return
-    assert isinstance(candi, BaseParamSpace)
-    self.hyper_parameters[flag_name] = candi
+    type = parse.get_kwarg('type', str)
+    # TODO: categorical
+    if type in ('categorical', 'c'):
+      self.hyper_parameters[flag_name] = \
+        CategoricalParamSpace(val[0][1:], transform='index')
+    elif type in ('int', 'integer', 'i'):
+      low = parse.get_kwarg('low', int)
+      high = parse.get_kwarg('high', int)
+      distribution = parse.get_kwarg('distribution', str, default='uniform')
+      self.hyper_parameters[flag_name] = IntParamSpace(low, high, distribution,
+                                                       transform='identity')
+    elif type in ('float', 'f'):
+      low = parse.get_kwarg('low', float)
+      high = parse.get_kwarg('high', float)
+      distribution = parse.get_kwarg('distribution', str, default='uniform')
+      self.hyper_parameters[flag_name] = FloatParamSpace(low, high,
+                                                         distribution,
+                                                         transform='identity')
+    else:
+      print('!! bayes param\'s type should be int, float, categorical, got {}'
+            .format(type))
+      return
 
   def _step_bayes(self, optimizer, param_space, counter, iters, mark, save,
                   history):
+    import pickle
     from tframe.utils.param_search.param_space import point_2dict
+    from tframe import metrics as me
     params = optimizer.ask()
-    params_dict = point_2dict(param_space, params)
+    # params = params[0]
+    params_dict = point_2dict(param_space, params[0])
 
     # Grand self._add_script_suffix the highest priority
     if self._add_script_suffix is not None: save = self._add_script_suffix
     if save: self.common_parameters['script_suffix'] = '_{}{}'.format(
       mark, counter)
 
-    params_config = self._get_all_configs(params_dict)
-    self._apply_constraints(params_config)
+    try:
+      params_config = self._get_all_configs(params_dict)
+      self._apply_constraints(params_config)
 
-    params_list = self._get_config_strings(params_config)
-    params_string = ' '.join(params_list)
-    if params_string in history: return
-    history.append(params_string)
-    console.show_status(
-      'Loading task ...', '[Run {}/{}]'.format(counter, iters))
-    call([self._python_cmd, self.module_name] + params_list)
-    print()
+      params_list = self._get_config_strings(params_config)
+      params_string = ' '.join(params_list)
+      # if params_string in history: return
+      history.append(params_string)
+
+      console.show_status(
+        'Loading task ...', '[Run {}/{}]'.format(counter + 1, iters))
+      call([self._python_cmd, self.module_name] + params_list)
+      print()
+    except:
+      print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! get params error')
+      print("params_config {}".format(params_config))
+      print('params list {}'.format(params_list))
+      print('params string {}'.format(params_string))
     # TODO: get results
     # smaller is better
-    results = None
-    optimizer.tell(params, results)
+    gather_summ_file = self.common_parameters.get('gather_summ_name',
+                                                  (self.default_summ_name +
+                                                   '.sum'))
+    try:
+      with open(gather_summ_file, 'rb') as f:
+        self.notes = pickle.load(f)
+      assert isinstance(self.notes, list)
+    except:
+      print('!! Failed to load {}'.format(gather_summ_file))
+      return
+
+    if self.base_metric not in self.notes[-1]._criteria:
+      print('!! metric {} not found in Result Notes {}'.
+            format(self.base_metric, self.notes[1].keys()))
+    results = - self.notes[-1]._criteria[self.base_metric]
+    # metric_quantity = me.get(self.base_metric)
+    # if metric_quantity.lower_is_better:
+    #   results = -results
+    optimizer.tell(params, [results])
     return history
 
   # endregion : BayesSearch

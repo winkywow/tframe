@@ -12,21 +12,6 @@ from skopt.acquisition import _gaussian_acquisition, gaussian_acquisition_1D
 from tframe.utils.param_search.param_space import *
 
 
-def get_random_seed(seed):
-    """
-    get a np.random.RandomState instance
-    :param seed: None or int or instance of RandomState
-    :return: a np.random.RandomState instance
-    """
-    if seed is None or seed is np.random:
-        return np.random
-    if isinstance(seed, int):
-        return np.random.RandomState(seed)
-    if isinstance(seed, np.random.RandomState):
-        return seed
-    raise ValueError('{} cannot be used as a random seed'.format(seed))
-
-
 def is_regressor(estimator):
     return getattr(estimator, '_estimator_type', None) == 'regressor'
 
@@ -207,9 +192,9 @@ class Optimizer(object):
             pass
         elif is_listlike(y) and is_2d_listlike(x):
             for yy in y:
-                if not isinstance(yy, (int, float)):
+                if not isinstance(yy, (int, float, np.float32)):
                     raise ValueError('expected y to be a list of scalars, got'
-                                     '{}'.format(y))
+                                     '{}, type {}'.format(y, type(yy)))
         elif is_listlike(x):
             if not isinstance(y, (int, float)):
                 raise ValueError('expected y to be a scalar, got {}'.format(y))
