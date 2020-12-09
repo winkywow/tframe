@@ -6,6 +6,7 @@ from collections import OrderedDict
 import numpy as np
 
 import tframe as tfr
+from tframe.enums import SaveMode
 
 from tframe.operators.prune.etches.etch_kernel import EtchKernel
 
@@ -25,6 +26,10 @@ class Pruner(object):
     tfr.console.show_status('Pruner created.')
 
   # region : Properties
+
+  @property
+  def weights_list(self):
+    return [k.weights for k in self._dense_kernels]
 
   @property
   def th(self): return tfr.hub
@@ -98,9 +103,10 @@ class Pruner(object):
     self._update_kernels(ops, feed_dict)
     # Show prune result
     curr_frac = self.weights_fraction
-    tfr.console.show_status(
-      'Weights fraction decreased from {:.2f} to {:.2f}'.format(
-        prev_frac, curr_frac), prompt)
+    if abs(curr_frac - prev_frac) > 0.006:
+      tfr.console.show_status(
+        'Weights fraction decreased from {:.2f} to {:.2f}'.format(
+          prev_frac, curr_frac), prompt)
 
   @staticmethod
   def extractor(*args):
@@ -139,7 +145,8 @@ class Pruner(object):
       assert isinstance(knl, EtchKernel)
       knl.weights_buffer = w_buffer
       knl.mask_buffer = m_buffer
-    tfr.console.show_status('Weights and mask buffers fetched.', prompt)
+    if not tfr.hub.etch_quietly:
+      tfr.console.show_status('Weights and mask buffers fetched.', prompt)
 
   def _update_kernels(self, ops, feed_dict):
     assert isinstance(ops, list) and isinstance(feed_dict, dict)
@@ -161,8 +168,9 @@ class Pruner(object):
        [1] Frankle, etc. THE LOTTERY TICKET HYPOTHESIS: FINDING SPARSE,
            TRAINABLE NEURAL NETWORKS. 2018
     """
+    if tfr.hub.forbid_lottery_saving: return
     # pruning should start from best model if save_model is on
-    if tfr.hub.save_model:
+    if tfr.hub.save_model and tfr.hub.save_mode == SaveMode.ON_RECORD:
       tfr.console.show_status('Loading best model to prune ...')
       self._model.agent.load()
 
