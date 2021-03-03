@@ -432,7 +432,7 @@ class Helper(object):
 
     if self.base_metric not in self.notes[-1]._criteria:
       print('!! metric {} not found in Result Notes {}'.
-            format(self.base_metric, self.notes[1].keys()))
+            format(self.base_metric, self.notes[-1]._criteria))
     results = - self.notes[-1]._criteria[self.base_metric]
     # metric_quantity = me.get(self.base_metric)
     # if metric_quantity.lower_is_better:

@@ -13,6 +13,8 @@ class DataConfigs(object):
   sequence_length = Flag.integer(0, 'Sequence length', is_key=None)
   fixed_length = Flag.boolean(True, 'Whether to fix sequence length.'
                                     'used in AP, etc', is_key=None)
+  data_augmentation = Flag.boolean(False, 'Whether to use data augmentation',
+                                   is_key=None)
   cheat = Flag.boolean(True, '...', is_key=None)
   multiple = Flag.integer(1, '...', is_key=None)
   noisy = Flag.boolean(None, 'Whether XXX is noisy.', is_key=None)

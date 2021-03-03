@@ -70,8 +70,9 @@ def convert_to_one_hot(labels, num_classes):
   assert num_classes > 1
   # Convert labels to numpy array with last dim larger than 1
   labels = np.array(labels)
-  if np.max(labels) == 1: return labels
-  if labels.shape[-1] == 1: labels = labels.squeeze(axis=-1)
+  # if np.max(labels) == 1: return labels
+  if labels.shape[-1] == 1:
+    labels = labels.squeeze(axis=-1)
   # Prepare zeros
   label_shape = list(labels.shape)
   one_hot = np.zeros(shape=label_shape + [num_classes])

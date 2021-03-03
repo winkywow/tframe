@@ -372,7 +372,7 @@ class Model(object):
     :return: a generator or a list
     """
     # Data set must be an instance of DataSet or BigData
-    assert isinstance(data_set, (DataSet, BigData, PerpetualMachine))
+    # assert isinstance(data_set, (DataSet, BigData, PerpetualMachine))
 
     if self.input_type is InputTypes.BATCH:
       # 1. For FNN, `num_steps` will be ignored, default batch_size is -1 (all)
@@ -446,7 +446,7 @@ class Model(object):
     :return: a dictionary in which keys are slots (may include loss and metric)
              and values are scalars corresponding to these slots
     """
-    assert isinstance(data_set, DataSet)
+    # assert isinstance(data_set, DataSet)
     if num_steps is None: num_steps = hub.val_num_steps
 
     # - One-shot validation

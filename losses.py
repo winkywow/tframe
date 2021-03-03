@@ -92,7 +92,12 @@ def weighted_cross_entropy(labels, logits):
   # Calculate weighted cross-entropy
   with tf.name_scope('weighted_cross_entropy'):
     if use_logits:
-      if _aligned(labels, logits): raise NotImplementedError
+      if _aligned(labels, logits):
+        # raise NotImplementedError
+        weights = tf.gather(th.class_weights, np.argmax(labels, axis=-1))
+        return tf.losses.softmax_cross_entropy(
+          onehot_labels=labels, logits=logits, weights=weights
+        )
       else:
         # Squeeze last dimension of sparse labels cuz tf only accept this shape
         labels = _reshape_labels(labels, None)

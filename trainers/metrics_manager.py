@@ -62,7 +62,7 @@ class MetricsManager(object):
     assert len(self.stats_dict) > 0
     stats_dict = OrderedDict()
     for data_set, slot_stat in self.stats_dict.items():
-      assert isinstance(data_set, DataSet)
+      # assert isinstance(data_set, DataSet)
       assert isinstance(slot_stat, OrderedDict)
       scalar_dict = OrderedDict()
       for slot, stat in slot_stat.items():
@@ -174,7 +174,7 @@ class MetricsManager(object):
     :param rnd: if take_down_on_slot, rnd must be provided
     """
     # Sanity check
-    assert isinstance(data_set, DataSet)
+    # assert isinstance(data_set, DataSet)
     assert isinstance(slot_scalar_dict, dict)
 
     # Initialize an OrderedDict for data_set if necessary
@@ -220,7 +220,7 @@ class MetricsManager(object):
     stats_dict = self.latest_stats_dict
     assert isinstance(stats_dict, OrderedDict)
     for data_set, scalar_dict in stats_dict.items():
-      assert isinstance(data_set, DataSet)
+      # assert isinstance(data_set, DataSet)
       assert isinstance(scalar_dict, OrderedDict)
       console.show_status('On {}'.format(data_set.name), prompt)
       for slot, value in scalar_dict.items():
