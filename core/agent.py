@@ -18,6 +18,7 @@ from tframe.utils import imtool
 from tframe.utils import Note
 from tframe.utils.local import check_path, clear_paths, write_file
 from tframe.utils.local import save_checkpoint, load_checkpoint
+from tframe.utils.file_tools import io_utils
 
 from tframe.core.decorators import with_graph
 
@@ -251,6 +252,9 @@ class Agent(object):
 
   # region : For SummaryViewer
 
+  def add_to_note_misc(self, key, val):
+    self._note.misc[key] = val
+
   def put_down_configs(self, th):
     assert isinstance(th, Config)
     self._note.put_down_configs(th.key_options)
@@ -263,14 +267,17 @@ class Agent(object):
     # Try to load note list into summaries
     file_path = self.gather_summ_path
     if os.path.exists(file_path):
-      with open(file_path, 'rb') as f: summary = pickle.load(f)
+      # with open(file_path, 'rb') as f: summary = pickle.load(f)
+      summary = io_utils.load(file_path)
       assert len(summary) > 0
     else: summary = []
     # Add note to list and save
     note = self._note.tensor_free if hub.gather_only_scalars else self._note
     summary.append(note)
-    with open(file_path, 'wb') as f:
-      pickle.dump(summary, f, pickle.HIGHEST_PROTOCOL)
+    io_utils.save(summary, file_path)
+    # with open(file_path, 'wb') as f:
+    #   pickle.dump(summary, f, pickle.HIGHEST_PROTOCOL)
+
     # Show status
     console.show_status('Note added to summaries ({} => {}) at `{}`'.format(
       len(summary) - 1, len(summary), file_path))
@@ -336,7 +343,9 @@ class Agent(object):
     if graph is not None:
       assert isinstance(graph, tf.Graph)
       self._graph = graph
-    else: self._graph = tf.Graph()
+    else:
+      self._graph = tf.get_default_graph()
+      # self._graph = tf.Graph()
     # Initialize graph variables
     with self.graph.as_default():
       self._is_training = tf.placeholder(

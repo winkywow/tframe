@@ -10,25 +10,27 @@ import tframe as tfr
 from tframe import pedia
 
 from .flag import Flag
-from .model_configs import ModelConfigs
-from .trainer_configs import TrainerConfigs
-from .note_configs import NoteConfigs
-from .rnn_configs import RNNConfigs
-from .monitor_configs import MonitorConfigs
+from .advanced_configs import AdvancedConfigs
 from .cloud_configs import CloudConfigs
 from .dataset_configs import DataConfigs
-from .advanced_configs import AdvancedConfigs
+from .display_configs import DisplayConfig
+from .model_configs import ModelConfigs
+from .monitor_configs import MonitorConfigs
+from .note_configs import NoteConfigs
+from .rnn_configs import RNNConfigs
+from .trainer_configs import TrainerConfigs
 
 
 class Config(
-  ModelConfigs,
-  TrainerConfigs,
-  NoteConfigs,
-  RNNConfigs,
-  MonitorConfigs,
+  AdvancedConfigs,
   CloudConfigs,
   DataConfigs,
-  AdvancedConfigs,
+  DisplayConfig,
+  ModelConfigs,
+  MonitorConfigs,
+  NoteConfigs,
+  TrainerConfigs,
+  RNNConfigs,
 ):
   registered = False
 
@@ -41,6 +43,7 @@ class Config(
     './records', 'The root directory where the records should be put',
     name='job-dir')
   data_dir = Flag.string('', 'The data directory')
+  raw_data_dir = Flag.string(None, 'Raw data directory')
 
   dtype = Flag.whatever(tf.float32, 'Default dtype for tensors', is_key=None)
   tb_port = Flag.integer(6006, 'Tensorboard port number')
@@ -174,7 +177,7 @@ class Config(
   # region : Public Methods
 
   @staticmethod
-  def decimal_str(num, decimals):
+  def decimal_str(num, decimals=3):
     assert np.isscalar(num)
     assert isinstance(decimals, int) and decimals > 0
     fmt = '{:.' + str(decimals) + 'f}'

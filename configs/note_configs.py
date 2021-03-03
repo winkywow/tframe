@@ -20,6 +20,9 @@ class NoteConfigs(object):
   note_cycle = Flag.integer(0, 'Note cycle')
   note_per_round = Flag.integer(0, 'Note per round')
 
+  export_structure_detail = Flag.boolean(
+    True, 'Option to export structure detail')
+
   # TODO: ++export_tensors
   export_tensors_to_note = Flag.boolean(
     False, 'Whether to export tensors to note')
@@ -68,6 +71,9 @@ class NoteConfigs(object):
 
   export_var_alpha = Flag.boolean(
     False, 'Vars list: (1) coef in sig_curve;')
+
+  take_down_confusion_matrix = Flag.boolean(
+    False, 'Whether to take down confusion matrix after evaluation')
 
 
   def smooth_out_note_configs(self):

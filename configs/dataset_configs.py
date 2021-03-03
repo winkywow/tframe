@@ -10,6 +10,8 @@ class DataConfigs(object):
   train_size = Flag.integer(0, 'Size of training set')
   val_size = Flag.integer(0, 'Size of validation set')
   test_size = Flag.integer(0, 'Size of test set')
+  val_config = Flag.string(None, 'Config string for val_set', is_key=None)
+  test_config = Flag.string(None, 'Config string for test_set', is_key=None)
   sequence_length = Flag.integer(0, 'Sequence length', is_key=None)
   fixed_length = Flag.boolean(True, 'Whether to fix sequence length.'
                                     'used in AP, etc', is_key=None)
@@ -63,6 +65,12 @@ class DataConfigs(object):
   sub_seq_len = Flag.integer(
     None, 'Length of sub-sequence used in seq_set.get_round_len or '
           'gen_rnn_batches', is_key=None)
+
+  # Data augmentation options
+  augmentation = Flag.boolean(False, 'Whether to augment data', is_key=None)
+  aug_config = Flag.string(
+    None, 'Configuration for data augmentation', is_key=None)
+  pad_mode = Flag.string(None, 'Padding option for image padding', is_key=None)
 
   @property
   def sample_among_sequences(self):
