@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tframe import console, checker
+from tframe import console, checker, pedia
 from tframe.layers.layer import Layer, single_input, Function
 from tframe.utils import get_scale
 
@@ -19,14 +19,15 @@ class ShortCut(Layer):
     SUM = 'sum'
     CONCATE = 'concate'
 
-  def get_layer_string(self, scale, full_name=False):
-    result = super().get_layer_string(scale, full_name)
-    result += '({})'.format(','.join(self.transformation_str_list))
-    return result
+  @property
+  def structure_tail(self):
+    return '({})'.format(','.join(self.transformation_str_list))
 
   @property
   def transformation_str_list(self):
     result = []
+    if self._transforms is None:
+      return [f.output_id_str for f in self.definitions]
     for f, t_list in zip(self.definitions, self._transforms):
       result.append(
         '->'.join([f.output_id_str] + [t.group_name for t in t_list]))
@@ -77,6 +78,28 @@ class ShortCut(Layer):
       self._transforms = [[] for _ in self.definitions]
     # Add f into transformation list
     self._transforms[branch_id].append(f)
+
+
+class Merge(Layer):
+
+  PROD = pedia.prod
+  SUM = pedia.sum
+  CONCAT = pedia.concat
+
+  def __init__(self, merge_method, **kwargs):
+    self.full_name, self.abbreviation = merge_method, merge_method
+    self.merge_method = merge_method
+    self.kwargs = kwargs
+
+  def _link(self, input_list, **kwargs):
+    if self.merge_method == self.SUM: return tf.add_n(input_list)
+    elif self.merge_method == self.CONCAT:
+      return tf.concat(input_list, axis=self.kwargs.get('axis', -1))
+    elif self.merge_method == self.PROD:
+      output = input_list.pop()
+      for tensor in input_list: output *= tensor
+      return output
+    else: raise KeyError('!! Unknown merge method {}'.format(self.merge_method))
 
 
 class ConcatenateForGAN(Layer):

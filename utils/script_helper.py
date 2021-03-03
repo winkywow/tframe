@@ -119,7 +119,7 @@ class Helper(object):
   def set_python_cmd_suffix(self, suffix='3'):
     self._python_cmd = 'python{}'.format(suffix)
 
-  def run(self, times=1, save=False, mark=''):
+  def run(self, times=1, save=False, mark='', rehearsal=False):
     if self._sys_runs is not None:
       times = checker.check_positive_integer(self._sys_runs)
       console.show_status('Run # set to {}'.format(times))
@@ -148,10 +148,17 @@ class Helper(object):
         if params_string in history: continue
         history.append(params_string)
         console.show_status(
-          'Loading task ...', '[Run {}/{}]'.format(run_id + 1, times))
-        call([self._python_cmd, self.module_name] + params_list)
-        # call(self.command_head + params_list)
-        print()
+          'Loading task ...', '[Run {}/{}][{}]'.format(
+            run_id + 1, times, len(history)))
+        console.show_info('Hyper-parameters:')
+        for k, v in hyper_dict.items():
+          console.supplement('{}: {}'.format(k, v))
+        if not rehearsal:
+          call([self._python_cmd, self.module_name] + params_list)
+          print()
+      # End of the run
+      if rehearsal: return
+
 
   # endregion : Public Methods
 
@@ -182,7 +189,12 @@ class Helper(object):
         raise KeyError(
           '!! Failed to set `{}`  since it has not been registered'.format(
             flag_name))
-      configs[flag_name] = value
+      # TODO: Allowing tuple as constraint key in this way is not elegant as
+      #       the corresponding option in value list must be registered
+      if isinstance(value, (tuple, list)):
+        if str(configs[flag_name]) not in [str(v) for v in value]:
+          configs[flag_name] = value[0]
+      else: configs[flag_name] = value
 
     for condition, constraint in self.constraints.items():
       assert isinstance(constraint, dict)

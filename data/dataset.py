@@ -76,6 +76,25 @@ class DataSet(TFRData):
       else: raise TypeError('!! Unsupported target type {}'.format(type(val)))
 
   @property
+  def dense_labels(self):
+    if self.DENSE_LABELS in self.data_dict:
+      return self.data_dict[self.DENSE_LABELS]
+    if self.num_classes is None: raise AssertionError(
+      '!! # classes should be known for getting dense labels')
+    # Try to convert dense labels from targets
+    targets = self.targets
+    # Handle sequence summary situation
+    if isinstance(targets, (list, tuple)):
+      targets = np.concatenate(targets, axis=0)
+    dense_labels = misc.convert_to_dense_labels(targets)
+    self.dense_labels = dense_labels
+    return dense_labels
+
+  @dense_labels.setter
+  def dense_labels(self, val):
+    self.data_dict[self.DENSE_LABELS] = val
+
+  @property
   def n_to_one(self):
     return self.properties.get('n_to_one', False)
 
@@ -307,10 +326,14 @@ class DataSet(TFRData):
   # region : Public Methods
 
   def split(self, *sizes, names=None, over_classes=False, random=False):
-    """If over_classes is True, sizes are for each group"""
+    """If over_classes is True, sizes are for each group, and this works only
+       for uniform dataset.
+    """
     # Sanity check
     if len(sizes) == 0: raise ValueError('!! split sizes not specified')
     elif len(sizes) == 1 and isinstance(sizes[0], (list, tuple)):
+      # in case this method is used like split([-1, 100, 100])
+      #   instead of split(-1, 100, 100)
       sizes = sizes[0]
     if names is not None:
       if not isinstance(names, (tuple, list)):
@@ -376,7 +399,10 @@ class DataSet(TFRData):
 
     return data_sets
 
+
   def refresh_groups(self, target_key='targets'):
+    # TODO: this method is overlapping with self.dense_labels property
+    #       try to fix it.
     # Sanity check
     if self.num_classes is None:
       raise AssertionError('!! DataSet should have known # classes')
