@@ -14,7 +14,7 @@ class NoteConfigs(object):
 
   export_note = Flag.boolean(False, 'Whether to take notes')
   gather_note = Flag.boolean(
-    False, 'If set to True, agent will gather information in a default way'
+    True, 'If set to True, agent will gather information in a default way'
           ' when export_note flag is set to True')
 
   note_cycle = Flag.integer(0, 'Note cycle')
@@ -49,7 +49,7 @@ class NoteConfigs(object):
   max_states_per_block = Flag.integer(
     -1, 'Max state size for each state block to export')
 
-  export_top_k = Flag.integer(0, 'Used in export_false of classifier')
+  export_top_k = Flag.integer(3, 'Used in export_false of classifier')
 
   # Statistics only for note summary
   total_params = Flag.integer(0, 'Parameter #', is_key=None)

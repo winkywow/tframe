@@ -2,9 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys, os
 import numpy as np
-from collections import OrderedDict
 import tensorflow as tf
+from collections import OrderedDict
 
 import tframe as tfr
 from tframe import pedia
@@ -176,6 +177,14 @@ class Config(
 
   # region : Public Methods
 
+  def config_dir(self, dir_depth=2):
+    """This method should be called only in XX_core.py module for setting
+       default job_dir and data_dir.
+    """
+    self.job_dir = os.path.join(sys.path[dir_depth - 1])
+    self.data_dir = os.path.join(self.job_dir, 'data')
+    tfr.console.show_status('Job directory set to `{}`'.format(self.job_dir))
+
   @staticmethod
   def decimal_str(num, decimals=3):
     assert np.isscalar(num)
@@ -241,33 +250,13 @@ class Config(
     return flag
 
   def get_optimizer(self, optimizer=None):
-    from tframe import context
-    from tframe.optimizers.clip_opt import GradientClipOptimizer
+    """Get tframe optimizer (based on tensorflow optimizer). """
+    from tframe.optimizers.optimizer import Optimizer
+
     if optimizer is None:
-      assert self.optimizer is not None and self.learning_rate is not None
-      optimizer = self.get_tf_optimizer()
-    context.tf_optimizer = optimizer
-
-    if self.clip_threshold > 0:
-      assert self.clip_method in ('norm', 'value', 'global_norm', 'avg_norm')
-      optimizer = GradientClipOptimizer(
-        optimizer, self.clip_threshold, method=self.clip_method)
-    if not self.save_train_opt_vars:
-      if not isinstance(optimizer, tf.train.Optimizer):
-        assert isinstance(optimizer, GradientClipOptimizer)
-        tf_opt = optimizer._tf_optimizer
-      else: tf_opt = optimizer
-      assert isinstance(tf_opt, tf.train.Optimizer)
-      # TODO: may be not safe to do this
-      tf_opt._name = pedia.train_opt
-    return optimizer
-
-  def get_tf_optimizer(self):
-    if self.optimizer in ['adam', tf.train.AdamOptimizer]:
-      return tf.train.AdamOptimizer(
-        learning_rate=self.learning_rate,
-        beta1=self.beta1, beta2=self.beta2, epsilon=self.adam_epsilon)
-    return self.optimizer(self.learning_rate)
+      assert not any([self.optimizer is None, self.learning_rate is None])
+      optimizer = self.optimizer
+    return Optimizer.get_optimizer(optimizer)
 
   # endregion : Public Methods
 

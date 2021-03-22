@@ -16,7 +16,7 @@ class TrainerConfigs(object):
   save_model = Flag.boolean(True, 'Whether to save model during training')
   save_model_in_the_beginning = Flag.boolean(False, '...')
   save_model_at_the_end = Flag.boolean(False, '...')
-  overwrite = Flag.boolean(False, 'Whether to overwrite records')
+  overwrite = Flag.boolean(True, 'Whether to overwrite records')
   summary = Flag.boolean(False, 'Whether to write summary')
   epoch_as_step = Flag.boolean(True, '...')
   snapshot = Flag.boolean(False, 'Whether to take snapshot during training')
@@ -83,10 +83,10 @@ class TrainerConfigs(object):
   reg_strength = Flag.float(0.0, 'Regularizer strength', name='reg_str',
                             is_key=None)
 
-  clip_lr_multiplier = Flag.float(
-    1.0, 'Learning rate decay applied via  clip_optimizer')
-  clip_nan_protection = Flag.boolean(
-    False, 'Whether to use NaN protection in clip_opt')
+  opt_lr_multiplier = Flag.float(
+    1.0, 'Learning rate decay applied via tframe optimizer')
+  opt_nan_protection = Flag.boolean(
+    False, 'Whether to use NaN protection in tframe optimizer')
   state_nan_protection = Flag.boolean(
     False, 'Whether to use NaN protection on train state update. '
            'Usually used with clip_nan_protection')

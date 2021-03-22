@@ -20,7 +20,9 @@ class ModelConfigs(object):
     None, 'Architecture string for parsing', is_key=None)
   identifier = Flag.string(
     '', 'Model identifier, used in summary viewer', is_key=None)
-  learning_rate = Flag.float(None, 'Learning rate', name='lr', is_key=None)
+  learning_rate = Flag.float(
+    None, 'Learning rate', name='lr', is_key=None, hp_scale='log')
+  lr = learning_rate  # Compromise
   momentum = Flag.float(0.9, 'Momentum', is_key=None)
   weight_initializer = Flag.string(None, 'Weight initializer', is_key=None)
   bias_initializer = Flag.float(None, 'Bias initializer', is_key=None)
@@ -156,6 +158,21 @@ class ModelConfigs(object):
   group_size = Flag.integer(None, 'Group size in SOG activation', is_key=None)
   axis = Flag.integer(None, 'Parameter axis, may be used in many methods',
                       is_key=None)
+
+  # NAS related
+  filters = Flag.integer(None, 'Number of filters/channels used in CNNs',
+                         is_key=None)
+  vertices = Flag.string(None, 'Vertices list used in DAG architecture',
+                         is_key=None)
+  adj_matrix = Flag.string(None, 'Adjacent matrix of a DAG', is_key=None)
+  num_stacks = Flag.integer(None, 'Number of module stacks', is_key=None)
+  module_per_stack = Flag.integer(None, 'Module per stack', is_key=None)
+  input_projection = Flag.boolean(
+    None, 'Whether to use input projection', is_key=None)
+
+  bn_momentum = Flag.float(
+    None, 'Global batch norm layer momentum', is_key=None)
+  bn_epsilon = Flag.float(None, 'Global batch norm layer epsilon', is_key=None)
 
 
   def smooth_out_model_configs(self):

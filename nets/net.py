@@ -34,6 +34,7 @@ class Net(Function):
   def __init__(self, name, level=0, inter_type=pedia.cascade,
                is_branch=False, **kwargs):
     """Instantiate Net, a name must be given
+       TODO: deprecate inter_type
        :param level: level 0 indicates the trunk
        :param inter_type: \in {cascade, fork, sum, prod, concat}
     """
@@ -130,13 +131,10 @@ class Net(Function):
     """
     from tframe.nets.rnet import RNet
     from tframe.nets.customized_net import CustomizedNet
-    widths = hub.structure_detail_widths
     indent = 3
 
     # rows is a list of lists of 3 cols
     rows = []
-    # TODO: the line below should be removed is things are settled down
-    # add_to_rows = lambda cols: rows.append(fs.table_row(cols, widths))
 
     # Dense total will be used when model weights are pruned
     total_params, dense_total = 0, 0
@@ -165,7 +163,9 @@ class Net(Function):
 
     # Check total params
     if not (hub.prune_on or hub.etch_on):
-      assert total_params == sum([np.prod(v.shape) for v in self.var_list])
+      var_list_params = sum([np.prod(v.shape) for v in self.var_list])
+      if not total_params == var_list_params:
+        raise AssertionError('!! total params do not match')
 
     if self.is_root:
       headers = ['Layers', 'Output Shape', 'Params #']
@@ -186,18 +186,18 @@ class Net(Function):
       return t.content, total_params, dense_total
     else: return rows, total_params, dense_total
 
-  def _get_layer_detail(self, layer):
+  def _get_layer_detail(self, layer, suffix=''):
     variables = [v for v in self.var_list
                  if layer.group_name == v.name.split('/')[self._level + 1]]
     num, dense_num = stark.get_params_num(variables, consider_prune=True)
     # Generate a row
-    row = [self._get_layer_string(layer, True, True),
+    row = [self._get_layer_string(layer, True, True, suffix),
            layer.output_shape_str, stark.get_num_string(num, dense_num)]
     return row, num, dense_num
 
-  def _get_layer_string(self, f, scale, full_name=False):
+  def _get_layer_string(self, f, scale, full_name=False, suffix=''):
     assert isinstance(f, Layer)
-    return f.get_layer_string(scale, full_name)
+    return f.get_layer_string(scale, full_name, suffix)
 
   def structure_string(self, detail=True, scale=True):
     # Get functions to be added to structure string
@@ -338,8 +338,9 @@ class Net(Function):
     if len(self.children) == 0:
       raise AssertionError('!! This net does not have children')
     last_net = self.children[-1]
-    if isinstance(last_net, RNet) or (only_cascade and
-                                      last_net._inter_type != self.CASCADE):
+    if type(last_net) is not Net:
+    # if isinstance(last_net, RNet) or (only_cascade and
+    #                                   last_net._inter_type != self.CASCADE):
       last_net = self._add_new_subnet(layer)
 
     assert isinstance(last_net, Net)
@@ -486,8 +487,13 @@ class Net(Function):
     if customized_loss:
       loss_tensor_list += customized_loss
 
-    # (2) Add regularizer losses
-    loss_tensor_list += tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    # (2) Add regularized losses
+    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    loss_tensor_list.extend(reg_losses)
+    # (2-A) Add global l2 loss
+    if hub.global_l2_penalty > 0:
+      loss_tensor_list.append(hub.global_l2_penalty * tf.add_n(
+        [tf.nn.l2_loss(v) for v in self.var_list if v.trainable]))
 
     # Add-up all extra losses
     if loss_tensor_list:

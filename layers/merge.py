@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
 
 from tframe import console, checker, pedia
@@ -85,21 +86,101 @@ class Merge(Layer):
   PROD = pedia.prod
   SUM = pedia.sum
   CONCAT = pedia.concat
+  CONCAT_SUM = 'concat-sum'
 
   def __init__(self, merge_method, **kwargs):
+    """This layer class provides some build-in merge method, including
+    those listed in the class variables with capitalized names. When using
+    `CONCAT_SUM` method, one needs to specify `sum_indices`. Other tensors
+    will be concatenated first and added to those within `sum_indices`.
+    Currently a more general design is not needed."""
     self.full_name, self.abbreviation = merge_method, merge_method
     self.merge_method = merge_method
+    # Attributes for CONCAT method
+    self._axis = kwargs.get('axis', -1)
+    # Attributes for `CONCAT-SUM` method
+    self._sum_indices = kwargs.get('sum_indices', (0,))
+    if isinstance(self._sum_indices, int):
+      self._sum_indices = (self._sum_indices,)
+    if merge_method == self.CONCAT_SUM:
+      self.full_name += ('-{}'.format(
+        ','.join(self._sum_indices) if len(self._sum_indices) > 1 else 0))
+
+    self.max_trim = kwargs.get('max_trim', 0)
+    # Store other keyword arguments
     self.kwargs = kwargs
 
-  def _link(self, input_list, **kwargs):
+  def _link(self, *input_list, **kwargs):
+    # Check input_list
+    assert len(input_list) > 0
+    if len(input_list) == 1: input_list = input_list[0]
+    if not (isinstance(input_list, (list, tuple)) and len(input_list) > 1):
+      raise ValueError('!! Illegal input tensors flow into merge layer.')
+
+    # Slice if necessary
+    input_list = self._check_input_list(input_list)
+
+    # Merge according to specification
     if self.merge_method == self.SUM: return tf.add_n(input_list)
     elif self.merge_method == self.CONCAT:
-      return tf.concat(input_list, axis=self.kwargs.get('axis', -1))
+      return tf.concat(input_list, axis=self._axis)
     elif self.merge_method == self.PROD:
       output = input_list.pop()
       for tensor in input_list: output *= tensor
       return output
+    elif self.merge_method == self.CONCAT_SUM:
+      assert len(input_list) > 2
+      assert 0 < len(self._sum_indices) <= len(input_list) - 2
+      y = tf.concat([x for i, x in enumerate(input_list)
+                     if i not in self._sum_indices], axis=self._axis)
+      inputs = [x for i, x in enumerate(input_list) if i in self._sum_indices]
+      inputs.append(y)
+      return tf.add_n(inputs)
     else: raise KeyError('!! Unknown merge method {}'.format(self.merge_method))
+
+  def _check_input_list(self, input_list):
+    # Make sure each input has the same shape length
+    shapes = [x.shape.as_list() for x in input_list]
+    if not all([len(shape) == len(shapes[0]) for shape in shapes]):
+      raise AssertionError('!! tensors to be merged must have a same rank')
+
+    # TODO: some more checks should be done
+    if self.merge_method not in (self.SUM, self.PROD): return input_list
+    dims = [shape[self._axis] for shape in shapes]
+    min_dim = min(dims)
+    deltas = [d - min_dim for d in dims]
+    if not any(deltas): return input_list
+
+    # Try to automatically truncate overlong tensors
+    if max(deltas) > self.max_trim: raise ValueError(
+      '!! Failed to merge tensors because of unequal dimension of the'
+      ' corresponding axis which can not be truncated automatically.')
+
+    # Truncate overlong tensors
+    begin, size = [[i] * len(shapes[0]) for i in (0, 1)]
+    size[self._axis] = min_dim
+    for i, delta in enumerate(deltas):
+      if delta == 0: continue
+      input_list[i] =tf.slice(input_list[i], begin, size)
+
+    self.full_name += '[t]'
+    return input_list
+
+  @classmethod
+  def Sum(cls, **kwargs):
+    return Merge(cls.SUM, **kwargs)
+
+  @classmethod
+  def Prod(cls, **kwargs):
+    return Merge(cls.PROD, **kwargs)
+
+  @classmethod
+  def Concat(cls, axis=-1, **kwargs):
+    return Merge(cls.CONCAT, axis=axis, **kwargs)
+
+  @classmethod
+  def ConcatSum(cls, sum_indices=(0,), **kwargs):
+    return Merge(cls.CONCAT_SUM, sum_indices=sum_indices, **kwargs)
 
 
 class ConcatenateForGAN(Layer):
