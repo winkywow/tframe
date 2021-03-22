@@ -400,12 +400,12 @@ class Trainer(object):
     # Decay learning rate if necessary
     if self.th.lr_decay < 1.0:
       assert self.th.lr_decay > 0
-      self.th.clip_lr_multiplier *= self.th.lr_decay
+      self.th.opt_lr_multiplier *= self.th.lr_decay
       if self.th.reset_optimizer_after_resurrection:
         self.model.reset_optimizer()
       self.model.set_train_step()
       console.show_status('Learning rate decayed to {:.6f}'.format(
-        self.th.learning_rate * self.th.clip_lr_multiplier))
+        self.th.learning_rate * self.th.opt_lr_multiplier))
 
   # endregion : During training
 
@@ -751,9 +751,9 @@ class TrainerHub(Config):
 
   epoch = Flag.integer(1, 'Epoch number to train', is_key=None)
   max_iterations = Flag.integer(None, 'Max inner iterations')
-  batch_size = Flag.integer(1, 'Batch size', is_key=None)
+  batch_size = Flag.integer(1, 'Batch size', is_key=None, hp_scale='log')
   num_steps = Flag.integer(None, 'Number of time steps', is_key=None)
-  shuffle = Flag.boolean(False, 'Whether to shuffle', is_key=None)
+  shuffle = Flag.boolean(True, 'Whether to shuffle', is_key=None)
 
   print_cycle = Flag.integer(0, 'Print cycle')
   validate_cycle = Flag.integer(0, 'Validate cycle')
@@ -774,7 +774,7 @@ class TrainerHub(Config):
   patience = Flag.integer(
     20, 'Tolerance of idle rounds(or iterations) when early stop is on',
     is_key=None)
-  save_mode = Flag.enum(SaveMode.NAIVE, SaveMode,
+  save_mode = Flag.enum(SaveMode.ON_RECORD, SaveMode,
                         "Save mode, \in  ['naive', 'on_record']")
   warm_up_thres = Flag.integer(1, 'Warm up threshold', is_key=None)
   warm_up = Flag.boolean(False, 'Whether to warm up')

@@ -277,16 +277,10 @@ class Model(object):
     if not self._loss.activated:
       raise AssertionError('!! loss has not been activated yet')
     with tf.name_scope('Optimizer'):
-      if optimizer is None:
-        optimizer = hub.get_optimizer()
-        console.show_status(
-          'Optimizer defined in trainer hub initialized.', '++')
+      if optimizer is None: console.show_status(
+        'Optimizer defined in trainer hub initialized.', '++')
 
-      # TODO: BETA
-      if hub.use_rtrl:
-        raise AssertionError('use_rtrl option has been deprecated')
-        from tframe.optimizers.rtrl_opt import RealTimeOptimizer
-        optimizer = RealTimeOptimizer(self, optimizer)
+      optimizer = hub.get_optimizer(optimizer)
 
       self._optimizer = optimizer
       self.set_train_step(var_list)
@@ -296,8 +290,8 @@ class Model(object):
       self._optimizer.minimize(self._loss.op, var_list=var_list))
 
   def reset_optimizer(self):
-    from tframe.optimizers.clip_opt import GradientClipOptimizer
-    assert isinstance(self._optimizer, GradientClipOptimizer)
+    from tframe.optimizers.optimizer import Optimizer
+    assert isinstance(self._optimizer, Optimizer)
     self.session.run(self._optimizer.reset_tf_optimizer)
     console.show_status('TensorFlow optimizer has been reset.')
 
@@ -542,8 +536,11 @@ class Model(object):
 
   def handle_structure_detail(self):
     detail, total_params, dense_total = '', 0, 0
-    if hasattr(self, 'structure_detail'):
-      detail, total_params, dense_total = self.structure_detail
+    d_t_d = getattr(self, 'structure_detail', None)
+    if d_t_d: detail, total_params, dense_total = d_t_d
+    # if hasattr(self, 'structure_detail'):
+    #   detail, total_params, dense_total = self.structure_detail
+
     # Maybe take some notes
     params_str = 'Total params: {}'.format(total_params)
     hub.total_params = int(total_params)
@@ -678,6 +675,19 @@ class Model(object):
     assert isinstance(outputs, list)
     if single_fetch: outputs = outputs[0]
     return outputs
+
+  def rehearse(self, path=None, export_graph=False):
+    """This method build and launch model, show structure detail and export
+    tensorflow logs containing graph which can be visualized in TensorBoard."""
+    import os, sys
+    from tframe import hub as th
+
+    if path is None: path = os.path.join(sys.path[0], 'tmp')
+    th.summary = export_graph
+    th.job_dir = path
+
+    self.build(optimizer=tf.train.GradientDescentOptimizer(0.0))
+    self.launch_model(overwrite=True)
 
   # endregion : Public Methods
 

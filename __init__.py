@@ -24,3 +24,15 @@ from .import models
 
 from .models import Predictor
 from .models import Classifier
+
+from .utils.organizer import mu
+
+from .trainers.smartrainer import SmartTrainerHub as DefaultHub
+
+import numpy as np
+import tensorflow as tf
+
+
+def set_random_seed(seed=26):
+  np.random.seed(seed)
+  tf.set_random_seed(seed)
